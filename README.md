@@ -1,0 +1,1 @@
+# CodificacaoSeguraADS-2026
