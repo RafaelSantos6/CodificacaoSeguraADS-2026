@@ -1,0 +1,57 @@
+# Dependências
+node_modules/
+jspm_packages/
+
+# Build e compilação (NestJS / TypeScript)
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Bancos de dados locais (SQLite)
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# Testes e cobertura
+coverage/
+.nyc_output/
+
+# Cache e arquivos temporários
+.npm/
+.eslintcache
+.stylelintcache
+.cache/
+tmp/
+temp/
+
+# IDEs e editores
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema Operacional
+.DS_Store
+Thumbs.db

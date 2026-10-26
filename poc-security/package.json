@@ -1,0 +1,33 @@
+{
+  "name": "poc-security",
+  "version": "0.0.1",
+  "description": "PoC de Seguranca em NestJS - SQLi e XSS",
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/typeorm": "^10.0.0",
+    "dompurify": "^3.0.6",
+    "helmet": "^7.1.0",
+    "jsdom": "^24.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.1",
+    "sqlite3": "^5.1.7",
+    "typeorm": "^0.3.20"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.0.0",
+    "@nestjs/schematics": "^10.0.0",
+    "@types/dompurify": "^3.0.5",
+    "@types/express": "^4.17.17",
+    "@types/jsdom": "^21.1.6",
+    "@types/node": "^20.3.1",
+    "typescript": "^5.1.3"
+  }
+}
