@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ambiente de Testes de Segurança — ADS 2026</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="top-header">
+    <div class="container">
+      <h1>Ambiente de Testes de Segurança (PoC)</h1>
+      <p class="subtitle">ADS 2026 • Codificação Segura: SQL Injection, CSRF e XSS</p>
+    </div>
+  </header>
+
+  <main class="container main-container">
+
+    <!-- ========================================================== -->
+    <!-- 1. TESTES DE SQL INJECTION (SQLi) -->
+    <!-- ========================================================== -->
+    <section class="test-section">
+      <div class="section-title">
+        <h2>1. Injeção de SQL (SQL Injection — SQLi)</h2>
+        <span class="tag">OWASP A03 / CWE-89</span>
+      </div>
+      <p class="section-desc">
+        Compara a execução de uma consulta construída por concatenação direta de strings contra uma consulta parametrizada via TypeORM (Prepared Statement).
+      </p>
+
+      <!-- Input Bar -->
+      <div class="control-box">
+        <label for="sqli-input">Parâmetro <code>username</code>:</label>
+        <div class="input-actions">
+          <input type="text" id="sqli-input" value="' OR 1=1 --" placeholder="Digite ou escolha um payload">
+          <button id="btn-run-sqli" class="btn btn-primary">Executar Teste</button>
+        </div>
+
+        <div class="quick-payloads">
+          <span class="payload-label">Testes rápidos:</span>
+          <button class="btn-link" onclick="setSQLi('admin')">Usuário Comum: admin</button>
+          <span class="sep">•</span>
+          <button class="btn-link" onclick="setSQLi('\' OR 1=1 --')">Bypass: ' OR 1=1 --</button>
+          <span class="sep">•</span>
+          <button class="btn-link" onclick="setSQLi('\' OR \'a\'=\'a')">Tautologia: ' OR 'a'='a</button>
+          <span class="sep">•</span>
+          <button class="btn-link" onclick="setSQLi('inexistente')">Inexistente</button>
+        </div>
+      </div>
+
+      <!-- Results Grid -->
+      <div class="grid-2">
+        <!-- Lado Vulnerável -->
+        <div class="test-panel panel-vuln">
+          <div class="panel-header">
+            <h3>[VULNERÁVEL] Concatenação Direta</h3>
+            <code>GET /sqli/vulnerable?username=...</code>
+          </div>
+
+          <div class="panel-content">
+            <div class="field-group">
+              <label>Query Executada no Servidor:</label>
+              <pre><code id="sqli-vuln-query">--</code></pre>
+            </div>
+
+            <div class="field-group">
+              <label>Diagnóstico do Teste:</label>
+              <div id="sqli-vuln-status" class="status-box">Aguardando execução...</div>
+            </div>
+
+            <div class="field-group">
+              <label>Resposta Bruta do Servidor (JSON):</label>
+              <pre><code id="sqli-vuln-res" class="code-output">[]</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lado Seguro -->
+        <div class="test-panel panel-safe">
+          <div class="panel-header">
+            <h3>[SEGURO] Consulta Parametrizada</h3>
+            <code>GET /sqli/secure?username=...</code>
+          </div>
+
+          <div class="panel-content">
+            <div class="field-group">
+              <label>Query Executada no Servidor:</label>
+              <pre><code id="sqli-sec-query">--</code></pre>
+            </div>
+
+            <div class="field-group">
+              <label>Diagnóstico do Teste:</label>
+              <div id="sqli-sec-status" class="status-box">Aguardando execução...</div>
+            </div>
+
+            <div class="field-group">
+              <label>Resposta Bruta do Servidor (JSON):</label>
+              <pre><code id="sqli-sec-res" class="code-output">[]</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- 2. TESTES DE CSRF (CROSS-SITE REQUEST FORGERY) -->
+    <!-- ========================================================== -->
+    <section class="test-section">
+      <div class="section-title">
+        <h2>2. Falsificação de Requisição Entre Sites (CSRF)</h2>
+        <span class="tag">OWASP A01/A05 / CWE-352</span>
+      </div>
+      <p class="section-desc">
+        Demonstra como uma ação autenticada (transferência de R$ 500 de Alice para Bob) pode ser forjada sem autorização do usuário caso o endpoint não valide um token anti-CSRF (Synchronizer Token Pattern).
+      </p>
+
+      <!-- Account State Box -->
+      <div class="control-box">
+        <div class="account-status-bar">
+          <div>
+            <strong>Vítima Autenticada:</strong> <code>alice</code> (Saldo: <span id="csrf-alice-balance" class="text-bold">Carregando...</span>)
+          </div>
+          <div>
+            <strong>Atacante / Destinatário:</strong> <code>bob</code> (Saldo: <span id="csrf-bob-balance" class="text-bold">Carregando...</span>)
+          </div>
+          <button id="btn-csrf-reset" class="btn btn-secondary btn-sm">Restaurar Saldos Originais</button>
+        </div>
+
+        <div class="input-actions" style="margin-top: 12px;">
+          <button id="btn-csrf-forge" class="btn btn-primary">
+            ⚡ Disparar Requisição Forjada (Ataque CSRF — Sem Token)
+          </button>
+          <button id="btn-csrf-legit" class="btn btn-secondary">
+            🛡️ Disparar Requisição Legítima (Com Token Anti-CSRF)
+          </button>
+        </div>
+
+        <div class="quick-payloads">
+          <span class="payload-label">Cenário de Ataque:</span>
+          <span>Transfere R$ 500,00 da conta de <code>alice</code> para <code>bob</code> simulando clique em link/formulário de página de terceiros.</span>
+        </div>
+      </div>
+
+      <!-- Results Grid -->
+      <div class="grid-2">
+        <!-- Lado Vulnerável -->
+        <div class="test-panel panel-vuln">
+          <div class="panel-header">
+            <h3>[VULNERÁVEL] Sem Validação de Token Anti-CSRF</h3>
+            <code>POST /csrf/transfer-vulnerable</code>
+          </div>
+
+          <div class="panel-content">
+            <div class="field-group">
+              <label>Cabeçalhos e Dados Enviados:</label>
+              <pre><code id="csrf-vuln-req">--</code></pre>
+            </div>
+
+            <div class="field-group">
+              <label>Diagnóstico do Teste:</label>
+              <div id="csrf-vuln-status" class="status-box">Aguardando disparo...</div>
+            </div>
+
+            <div class="field-group">
+              <label>Resposta Bruta do Servidor:</label>
+              <pre><code id="csrf-vuln-res" class="code-output">[]</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lado Seguro -->
+        <div class="test-panel panel-safe">
+          <div class="panel-header">
+            <h3>[SEGURO] Validação com Synchronizer Token Pattern</h3>
+            <code>POST /csrf/transfer-secure</code>
+          </div>
+
+          <div class="panel-content">
+            <div class="field-group">
+              <label>Cabeçalhos e Dados Enviados:</label>
+              <pre><code id="csrf-sec-req">--</code></pre>
+            </div>
+
+            <div class="field-group">
+              <label>Diagnóstico do Teste:</label>
+              <div id="csrf-sec-status" class="status-box">Aguardando disparo...</div>
+            </div>
+
+            <div class="field-group">
+              <label>Resposta Bruta do Servidor:</label>
+              <pre><code id="csrf-sec-res" class="code-output">[]</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- 3. TESTES DE XSS REFLETIDO -->
+    <!-- ========================================================== -->
+    <section class="test-section">
+      <div class="section-title">
+        <h2>3. Cross-Site Scripting Refletido (XSS)</h2>
+        <span class="tag">OWASP A03 / CWE-79</span>
+      </div>
+      <p class="section-desc">
+        Compara o retorno direto do input no documento HTML contra o retorno tratado pelo <code>DOMPurify</code> com defesa em profundidade via CSP (<code>Helmet</code>).
+      </p>
+
+      <!-- Input Bar -->
+      <div class="control-box">
+        <label for="xss-input">Parâmetro <code>html</code>:</label>
+        <div class="input-actions">
+          <input type="text" id="xss-input" value="<script>alert('XSS')</script>" placeholder="Digite código HTML/JS">
+          <button id="btn-run-xss" class="btn btn-primary">Executar Teste</button>
+        </div>
+
+        <div class="quick-payloads">
+          <span class="payload-label">Testes rápidos:</span>
+          <button class="btn-link" onclick="setXSS('<b>Texto Negrito</b>')">HTML Inofensivo: &lt;b&gt;</button>
+          <span class="sep">•</span>
+          <button class="btn-link" onclick="setXSS('<script>alert(\'XSS\')</script>')">Tag &lt;script&gt;</button>
+          <span class="sep">•</span>
+          <button class="btn-link" onclick="setXSS('<img src=x onerror=alert(\'XSS\')>')">Tag &lt;img onerror&gt;</button>
+          <span class="sep">•</span>
+          <button class="btn-link" onclick="setXSS('<b>Ok</b><script>alert(\'XSS\')</script>')">Híbrido (Texto + Script)</button>
+        </div>
+      </div>
+
+      <!-- Results Grid -->
+      <div class="grid-2">
+        <!-- Lado Vulnerável -->
+        <div class="test-panel panel-vuln">
+          <div class="panel-header">
+            <h3>[VULNERÁVEL] Interpolação Direta</h3>
+            <code>GET /xss/vulnerable?html=...</code>
+          </div>
+
+          <div class="panel-content">
+            <div class="field-group">
+              <label>Diagnóstico do Teste:</label>
+              <div id="xss-vuln-status" class="status-box">Aguardando execução...</div>
+            </div>
+
+            <div class="field-group">
+              <label>Código HTML Bruto Retornado:</label>
+              <pre><code id="xss-vuln-res" class="code-output">--</code></pre>
+            </div>
+
+            <div class="field-group">
+              <label>Renderização no Navegador (Iframe Isolado):</label>
+              <iframe id="xss-vuln-frame" sandbox="allow-same-origin" class="preview-frame"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lado Seguro -->
+        <div class="test-panel panel-safe">
+          <div class="panel-header">
+            <h3>[SEGURO] Sanitização com DOMPurify + CSP</h3>
+            <code>GET /xss/secure?html=...</code>
+          </div>
+
+          <div class="panel-content">
+            <div class="field-group">
+              <label>Diagnóstico do Teste:</label>
+              <div id="xss-sec-status" class="status-box">Aguardando execução...</div>
+            </div>
+
+            <div class="field-group">
+              <label>Código HTML Sanitizado Retornado:</label>
+              <pre><code id="xss-sec-res" class="code-output">--</code></pre>
+            </div>
+
+            <div class="field-group">
+              <label>Renderização no Navegador (Iframe Isolado):</label>
+              <iframe id="xss-sec-frame" sandbox="allow-same-origin" class="preview-frame"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- 4. BATERIA DE TESTES AUTOMATIZADA -->
+    <!-- ========================================================== -->
+    <section class="test-section">
+      <div class="section-title">
+        <h2>4. Bateria Completa de Testes (Auditoria)</h2>
+        <button id="btn-run-all" class="btn btn-secondary">Executar Todos os Testes</button>
+      </div>
+      <p class="section-desc">
+        Dispara automaticamente os casos de teste para SQLi, CSRF e XSS contra os cenários vulneráveis e seguros, consolidando o resultado final.
+      </p>
+
+      <div class="table-container">
+        <table class="simple-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Vulnerabilidade</th>
+              <th>Endpoint Testado</th>
+              <th>Payload / Requisição</th>
+              <th>HTTP</th>
+              <th>Comportamento Observado</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody id="audit-table-body">
+            <tr>
+              <td colspan="7" class="text-muted">Clique em "Executar Todos os Testes" para gerar a matriz.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>Ambiente de Testes de Codificação Segura • SQLi | CSRF | XSS • SQLite in-memory • NestJS • ADS 2026</p>
+    </div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

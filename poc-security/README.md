@@ -18,7 +18,6 @@ Este documento explica como configurar e executar a aplicação em qualquer máq
    ```
 
 2. **Instalar todas as dependências:**
-   O projeto já contém o `package.json` configurado. Basta executar:
    ```bash
    npm install
    ```
@@ -28,58 +27,83 @@ Este documento explica como configurar e executar a aplicação em qualquer máq
    npm run start:dev
    ```
 
-4. **Verificação de inicialização:**
-   - A aplicação estará disponível em: `http://localhost:3000`
+4. **Acesso à Aplicação:**
+   - **Ambiente de Testes (Frontend):** Acesse diretamente no navegador: **`http://localhost:3000`**
    - O banco de dados SQLite em memória será iniciado e populado automaticamente com três usuários para teste: `admin`, `alice` e `bob`.
 
 ---
 
-## 2. O que o projeto testa
+## 2. O que o projeto testa (Fundamentação Teórica)
 
-O projeto testa duas das vulnerabilidades web mais críticas do OWASP Top 10 e suas respectivas mitigações em TypeScript/NestJS:
+O projeto testa três das vulnerabilidades web mais críticas do OWASP Top 10 e suas respectivas mitigações em TypeScript/NestJS:
 
-1. **SQL Injection (SQLi):**
+1. **SQL Injection (SQLi — OWASP A03 / CWE-89):**
    - **Cenário vulnerável:** Concatenação direta de parâmetros de entrada na string SQL usando `entityManager.query()`.
    - **Cenário seguro:** Parametrização de consultas via Repository Pattern do TypeORM (`repository.find()`), delegando ao driver a criação de *Prepared Statements*.
 
-2. **Cross-Site Scripting (XSS Refletido):**
+2. **Cross-Site Request Forgery (CSRF — OWASP A01/A05 / CWE-352):**
+   - **Cenário vulnerável:** Processamento de requisições de alteração de estado (transferência de saldo) sem validar consentimento ou token anti-CSRF, confiando apenas no envio automático de credenciais do navegador.
+   - **Cenário seguro:** Implementação do padrão *Synchronizer Token Pattern*, exigindo a validação de um token anti-CSRF criptográfico (`x-csrf-token`), rejeitando requisições forjadas com `403 Forbidden`.
+
+3. **Cross-Site Scripting (XSS Refletido — OWASP A03 / CWE-79):**
    - **Cenário vulnerável:** Retorno direto de dados fornecidos pelo usuário interpolados no corpo da resposta HTML sem sanitização.
    - **Cenário seguro:** Sanitização do conteúdo HTML utilizando `DOMPurify` (executado via `JSDOM` no backend) e defesa em profundidade através de cabeçalhos de *Content Security Policy* (CSP) configurados com o `Helmet`.
 
 ---
 
-## 3. Como os testes funcionam
+## 3. Ambiente de Testes (Frontend Simplificado)
 
-Com o servidor em execução (`npm run start:dev`), abra o navegador ou utilize o terminal (curl/Postman) para chamar as rotas:
+Ao acessar `http://localhost:3000`, a aplicação disponibiliza um ambiente minimalista e direto com 4 seções:
 
-### Teste 1: SQL Injection (SQLi)
+1. **Seção SQL Injection:**
+   - Entrada para parâmetros com atalhos de testes rápidos (`admin`, `' OR 1=1 --`, `' OR 'a'='a`).
+   - Comparativo lado a lado com exibição da query gerada, alerta de vazamento de senhas no vulnerável e Prepared Statement no seguro.
 
-- **Endpoint Vulnerável:**
-  - **Requisição normal:**
-    `http://localhost:3000/sqli/vulnerable?username=admin`
-    *(Retorna os dados do usuário `admin`, incluindo senha).*
-  - **Comportamento sob injeção de metacaracteres:**
-    `http://localhost:3000/sqli/vulnerable?username=' OR 1=1 --`
-    *(A lógica SQL é subvertida pela concatenação. A cláusula `WHERE` se torna sempre verdadeira e retorna **todos os usuários da tabela** e suas senhas).*
+2. **Seção CSRF (Transferência de Saldo):**
+   - Demonstra a conta de Alice (vítima) com R$ 1.000,00 e Bob (atacante) com R$ 200,00.
+   - Permite disparar uma **Requisição Forjada (Ataque CSRF — Sem Token)** ou uma **Requisição Legítima (Com Token)**.
+   - Comprova a transferência forçada sem autorização no endpoint vulnerável vs o bloqueio com `403 Forbidden` no endpoint seguro.
 
-- **Endpoint Seguro:**
-  - **Requisição normal:**
-    `http://localhost:3000/sqli/secure?username=admin`
-    *(Retorna apenas os campos seguros `id` e `username` do usuário `admin`).*
-  - **Comportamento sob injeção de metacaracteres:**
-    `http://localhost:3000/sqli/secure?username=' OR 1=1 --`
-    *(A entrada é tratada estritamente como dado literal pela consulta parametrizada. O banco busca literalmente um usuário com esse nome, resultando em `[]` vazio e sem vazamento de dados).*
+3. **Seção XSS Refletido:**
+   - Entrada com atalhos (`<b>`, `<script>`, `<img onerror>`).
+   - Comparativo direto entre o HTML cru retornado e o HTML sanitizado pelo DOMPurify com renderização em *sandboxed iframes*.
+
+4. **Bateria Completa de Testes (Auditoria em 1-Clique):**
+   - Executa automaticamente 9 casos de teste cobrindo SQLi, CSRF e XSS, gerando uma matriz com status HTTP, comportamento observado e veredito final.
 
 ---
 
-### Teste 2: Cross-Site Scripting (XSS Refletido)
+## 4. Testes Manuais via Terminal / Curl (Opcional)
 
-- **Endpoint Vulnerável:**
-  - **URL de teste:**
-    `http://localhost:3000/xss/vulnerable?html=<script>alert('XSS')</script>`
-  - **Resultado:** O texto enviado na querystring é injetado diretamente no DOM HTML retornado. Se inspecionado ou renderizado, a tag `<script>` permanece no documento sem qualquer filtro.
+Com o servidor em execução, você também pode chamar as rotas diretamente pelo terminal:
 
-- **Endpoint Seguro:**
-  - **URL de teste:**
-    `http://localhost:3000/xss/secure?html=<b>Texto Seguro</b><script>alert('XSS')</script>`
-  - **Resultado:** O `DOMPurify` processa o conteúdo antes do envio. Tags de formatação inofensivas como `<b>` são mantidas, enquanto qualquer tag perigosa como `<script>` é completamente removida. Adicionalmente, o cabeçalho `Content-Security-Policy` aplicado via `Helmet` impede a execução de scripts inline não autorizados no navegador.
+### Teste 1: SQL Injection (SQLi)
+- **Vulnerável:** `curl -s "http://localhost:3000/sqli/vulnerable?username=%27%20OR%201=1%20--"`
+- **Seguro:** `curl -s "http://localhost:3000/sqli/secure?username=%27%20OR%201=1%20--"`
+
+### Teste 2: CSRF (Cross-Site Request Forgery)
+- **Status das Contas:** `curl -s "http://localhost:3000/csrf/status"`
+- **Ataque Forjado (Vulnerável):**
+  ```bash
+  curl -s -X POST http://localhost:3000/csrf/transfer-vulnerable \
+    -H "Content-Type: application/json" \
+    -d '{"toUser":"bob","amount":500}'
+  ```
+- **Ataque Forjado Bloqueado (Seguro):**
+  ```bash
+  curl -s -X POST http://localhost:3000/csrf/transfer-secure \
+    -H "Content-Type: application/json" \
+    -d '{"toUser":"bob","amount":500}'
+  # Retorna HTTP 403 Forbidden
+  ```
+- **Requisição Legítima com Token (Seguro):**
+  ```bash
+  curl -s -X POST http://localhost:3000/csrf/transfer-secure \
+    -H "Content-Type: application/json" \
+    -H "x-csrf-token: sec_token_csrf_ads_2026" \
+    -d '{"toUser":"bob","amount":200}'
+  ```
+
+### Teste 3: XSS Refletido
+- **Vulnerável:** `curl -s "http://localhost:3000/xss/vulnerable?html=%3Cscript%3Ealert(%27XSS%27)%3C/script%3E"`
+- **Seguro:** `curl -s "http://localhost:3000/xss/secure?html=%3Cb%3EOk%3C/b%3E%3Cscript%3Ealert(%27XSS%27)%3C/script%3E"`
